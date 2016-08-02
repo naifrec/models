@@ -95,7 +95,7 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
   return logits, auxiliary_logits
 
 
-def loss(logits, labels, batch_size=None):
+def loss(logits, labels, batch_size=None, one_hot_encoded=True):
   """Adds all losses for the model.
 
   Note the final loss is not returned. Instead, the list of losses are collected
@@ -113,13 +113,16 @@ def loss(logits, labels, batch_size=None):
 
   # Reshape the labels into a dense Tensor of
   # shape [FLAGS.batch_size, num_classes].
-  sparse_labels = tf.reshape(labels, [batch_size, 1])
-  indices = tf.reshape(tf.range(batch_size), [batch_size, 1])
-  concated = tf.concat(1, [indices, sparse_labels])
-  num_classes = logits[0].get_shape()[-1].value
-  dense_labels = tf.sparse_to_dense(concated,
-                                    [batch_size, num_classes],
-                                    1.0, 0.0)
+  if one_hot_encoded:
+      dense_labels = labels
+  else:
+      sparse_labels = tf.reshape(labels, [batch_size, 1])
+      indices = tf.reshape(tf.range(batch_size), [batch_size, 1])
+      concated = tf.concat(1, [indices, sparse_labels])
+      num_classes = logits[0].get_shape()[-1].value
+      dense_labels = tf.sparse_to_dense(concated,
+                                        [batch_size, num_classes],
+                                        1.0, 0.0)
 
   # Cross entropy loss for the main softmax prediction.
   slim.losses.cross_entropy_loss(logits[0],
