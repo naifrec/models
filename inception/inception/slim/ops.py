@@ -414,7 +414,7 @@ def dropout(inputs, keep_prob=0.5, is_training=True, scope=None):
   Returns:
     a tensor representing the output of the operation.
   """
-  if is_training and keep_prob > 0:
+  if is_training:
     with tf.op_scope([inputs], scope, 'Dropout'):
       return tf.nn.dropout(inputs, keep_prob)
   else:
