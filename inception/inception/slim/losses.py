@@ -140,32 +140,38 @@ def l2_loss(tensor, weight=1.0, scope=None):
 
 
 def cross_entropy_loss(logits, one_hot_labels, label_smoothing=0,
-                       weight=1.0, scope=None):
-  """Define a Cross Entropy loss using softmax_cross_entropy_with_logits.
+                       weight=1.0, scope=None, mode='softmax'):
+    """Define a Cross Entropy loss using softmax_cross_entropy_with_logits.
 
-  It can scale the loss by weight factor, and smooth the labels.
+    It can scale the loss by weight factor, and smooth the labels.
 
-  Args:
-    logits: [batch_size, num_classes] logits outputs of the network .
-    one_hot_labels: [batch_size, num_classes] target one_hot_encoded labels.
-    label_smoothing: if greater than 0 then smooth the labels.
-    weight: scale the loss by this factor.
-    scope: Optional scope for op_scope.
+    Args:
+        logits: [batch_size, num_classes] logits outputs of the network .
+        one_hot_labels: [batch_size, num_classes] target one_hot_encoded
+        labels.
+        label_smoothing: if greater than 0 then smooth the labels.
+        weight: scale the loss by this factor.
+        scope: Optional scope for op_scope.
 
-  Returns:
-    A tensor with the softmax_cross_entropy loss.
-  """
-  logits.get_shape().assert_is_compatible_with(one_hot_labels.get_shape())
-  with tf.op_scope([logits, one_hot_labels], scope, 'CrossEntropyLoss'):
-    num_classes = one_hot_labels.get_shape()[-1].value
+    Returns:
+        A tensor with the softmax_cross_entropy loss.
+    """
+    logits.get_shape().assert_is_compatible_with(one_hot_labels.get_shape())
+    with tf.op_scope([logits, one_hot_labels], scope, 'CrossEntropyLoss'):
+        num_classes = one_hot_labels.get_shape()[-1].value
     one_hot_labels = tf.cast(one_hot_labels, logits.dtype)
     if label_smoothing > 0:
-      smooth_positives = 1.0 - label_smoothing
-      smooth_negatives = label_smoothing / num_classes
-      one_hot_labels = one_hot_labels * smooth_positives + smooth_negatives
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits,
-                                                            one_hot_labels,
-                                                            name='xentropy')
+        smooth_positives = 1.0 - label_smoothing
+        smooth_negatives = label_smoothing / num_classes
+        one_hot_labels = one_hot_labels * smooth_positives + smooth_negatives
+    if mode == 'softmax':
+        loss_func = tf.nn.softmax_cross_entropy_with_logits
+    elif mode == 'sigmoid':
+        loss_func = tf.nn.sigmoid_cross_entropy_with_logits
+    else:
+        raise ValueError('Cross entropy only accepts as mode "softmax" or '
+                         '"sigmoid", passed {}'.format(mode))
+    cross_entropy = loss_func(logits, one_hot_labels, name='xentropy')
     weight = tf.convert_to_tensor(weight,
                                   dtype=logits.dtype.base_dtype,
                                   name='loss_weight')

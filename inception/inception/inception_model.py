@@ -107,47 +107,50 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
     return logits, auxiliary_logits
 
 
-def loss(logits, labels, batch_size=None, one_hot_encoded=True):
-  """Adds all losses for the model.
+def loss(logits, labels, batch_size=None,
+         one_hot_encoded=True, mode='softmax'):
+    """Adds all losses for the model.
 
-  Note the final loss is not returned. Instead, the list of losses are collected
-  by slim.losses. The losses are accumulated in tower_loss() and summed to
-  calculate the total loss.
+    Note the final loss is not returned. Instead, the list of losses are collected
+    by slim.losses. The losses are accumulated in tower_loss() and summed to
+    calculate the total loss.
 
-  Args:
-    logits: List of logits from inference(). Each entry is a 2-D float Tensor.
-    labels: Labels from distorted_inputs or inputs(). 1-D tensor
-            of shape [batch_size]
-    batch_size: integer
-  """
-  if not batch_size:
-    batch_size = FLAGS.batch_size
+    Args:
+        logits: List of logits from inference(). Each entry is a 2-D float Tensor.
+        labels: Labels from distorted_inputs or inputs(). 1-D tensor
+                of shape [batch_size]
+        batch_size: integer
+        one_hot_encoded: bool, whether the targets are already one hot encoded
+        mode: Cross entropy loss mode, 'sigmoid' or 'softmax'
+    """
+    if not batch_size:
+        batch_size = FLAGS.batch_size
 
-  # Reshape the labels into a dense Tensor of
-  # shape [FLAGS.batch_size, num_classes].
-  if one_hot_encoded:
-      dense_labels = labels
-  else:
-      sparse_labels = tf.reshape(labels, [batch_size, 1])
-      indices = tf.reshape(tf.range(batch_size), [batch_size, 1])
-      concated = tf.concat(1, [indices, sparse_labels])
-      num_classes = logits[0].get_shape()[-1].value
-      dense_labels = tf.sparse_to_dense(concated,
-                                        [batch_size, num_classes],
-                                        1.0, 0.0)
+    # Reshape the labels into a dense Tensor of
+    # shape [FLAGS.batch_size, num_classes].
+    if one_hot_encoded:
+        dense_labels = labels
+    else:
+        sparse_labels = tf.reshape(labels, [batch_size, 1])
+        indices = tf.reshape(tf.range(batch_size), [batch_size, 1])
+        concated = tf.concat(1, [indices, sparse_labels])
+        num_classes = logits[0].get_shape()[-1].value
+        dense_labels = tf.sparse_to_dense(concated,
+                                          [batch_size, num_classes],
+                                          1.0, 0.0)
 
-  # Cross entropy loss for the main softmax prediction.
-  slim.losses.cross_entropy_loss(logits[0],
-                                 dense_labels,
-                                 label_smoothing=0.1,
-                                 weight=1.0)
+    # Cross entropy loss for the main softmax prediction.
+    slim.losses.cross_entropy_loss(logits[0],
+                                   dense_labels,
+                                   label_smoothing=0.1,
+                                   weight=1.0)
 
-  # Cross entropy loss for the auxiliary softmax head.
-  slim.losses.cross_entropy_loss(logits[1],
-                                 dense_labels,
-                                 label_smoothing=0.1,
-                                 weight=0.4,
-                                 scope='aux_loss')
+    # Cross entropy loss for the auxiliary softmax head.
+    slim.losses.cross_entropy_loss(logits[1],
+                                   dense_labels,
+                                   label_smoothing=0.1,
+                                   weight=0.4,
+                                   scope='aux_loss')
 
 
 def _activation_summary(x):
